@@ -1,0 +1,4 @@
+mysql-connector-python==9.1.0
+pandas==2.2.3
+plotly==5.24.1
+networkx==3.4.2

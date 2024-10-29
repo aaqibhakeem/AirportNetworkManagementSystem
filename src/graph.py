@@ -1,17 +1,15 @@
+import os, sys
 import networkx as nx
 import plotly.graph_objects as go
 import mysql.connector
 from src.shortestpath import ShortestPathAlgorithms
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from dbdetails import get_connection
 
 def load_airport_coordinates():
     airports = {}
 
-    conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="karad@83",
-        database="anm"
-    )
+    conn = get_connection()
 
     cursor = conn.cursor(dictionary=True)
 
@@ -209,12 +207,7 @@ if __name__ == "__main__":
     draw_graph(G, [shortest_path])
 
     # Ask the user if they want to add the route to the Routes table
-    conn = mysql.connector.connect(
-        host="localhost",         
-        user="root",              
-        password="karad@83", 
-        database="anm"  
-    )
+    conn = get_connection()
     ask_add_route_to_db(source, destination, shortest_path, shortest_distance, num_vias, G, conn)
 
     conn.close()

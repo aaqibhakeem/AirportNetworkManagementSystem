@@ -1,5 +1,6 @@
-import mysql.connector
-from tabulate import tabulate
+import mysql.connector, sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from dbdetails import get_connection
 
 class CRUDOperations:
     def __init__(self):
@@ -7,12 +8,7 @@ class CRUDOperations:
         self.cursor = None
 
     def get_db_connection(self):
-        self.conn = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="karad@83",
-            database="anm"
-        )
+        self.conn = get_connection()
         self.cursor = self.conn.cursor()
 
     def close_db_connection(self):

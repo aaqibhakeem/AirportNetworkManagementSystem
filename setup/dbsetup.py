@@ -1,5 +1,8 @@
+import sys
+import os
 import pandas as pd
-import mysql.connector
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from dbdetails import get_connection
 
 # Read the CSV files
 airports_csv_file = "airports.csv"  # Change this to your CSV file path for airports
@@ -13,12 +16,7 @@ flights_df = pd.read_csv(flights_csv_file)
 routes_df = pd.read_csv(routes_csv_file)
 
 # Connect to the MySQL database
-conn = mysql.connector.connect(
-    host="localhost",        # Replace with your MySQL host
-    user="root",             # Replace with your MySQL user
-    password="karad@83",     # Replace with your MySQL password
-    database="anm"           # Replace with your MySQL database name
-)
+conn = get_connection()
 
 cursor = conn.cursor()
 

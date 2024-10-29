@@ -4,7 +4,7 @@ from imports import *
 from src.components.customTitleBar import CustomTitleBar
 from src.components.notification import Notification
 from src.components.sideMenu import SideMenu
-from src.components.sideMenuButton import SideMenuButton
+from dbdetails import get_connection
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -234,12 +234,7 @@ class MainWindow(QMainWindow):
         num_vias = self.stopovers.value()
         
         # Use the existing code from main.py to store the route
-        conn = mysql.connector.connect(
-            host="localhost",         
-            user="root",              
-            password="karad@83", 
-            database="anm"  
-        )
+        conn = get_connection()
         ask_add_route_to_db(source, destination, self.shortest_path, self.shortest_distance, num_vias, None, conn)
         conn.close()
 
