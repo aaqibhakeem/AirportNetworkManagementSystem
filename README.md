@@ -26,7 +26,7 @@ git clone https://github.com/aaqibhakeem/AirportNetworkManagementSystem.git
 pip install -r requirements.txt
 ```
 
-4. Initialize your MySQL instance.
+4. Initialize your MySQL instance and create a new database `CREATE DATABASE <database_name>`. Setup tables in the database afterward.
 
 ```
 cd setup
