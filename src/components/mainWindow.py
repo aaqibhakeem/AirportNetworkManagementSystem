@@ -54,6 +54,9 @@ class MainWindow(QMainWindow):
 
         # Apply global stylesheet
         self.setStyleSheet("""
+            * {
+                color: black;
+            }
             QMainWindow, QWidget {
                 background-color: #5c4ca4;
                 border-radius: 10px;
