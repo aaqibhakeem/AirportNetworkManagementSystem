@@ -1,5 +1,5 @@
-# AirOptima
-Explore AirOptima as it reimagines air travel, blending technology with aviation to elevate the efficiency and safety of our skies. By harmonizing airspace dynamics, it brings an innovative approach to route planning, making modern aviation more sustainable and resilient.
+# Airport Network Management System 
+Explore Airport Network Management System as it reimagines air travel, blending technology with aviation to elevate the efficiency and safety of our skies. By harmonizing airspace dynamics, it brings an innovative approach to route planning, making modern aviation more sustainable and resilient.
 
 ## Features
 * Seamlessly integrated operations for managing data on airports, flights, and routes.
@@ -26,7 +26,7 @@ git clone https://github.com/aaqibhakeem/AirportNetworkManagementSystem.git
 pip install -r requirements.txt
 ```
 
-4. Initialize your MySQL instance and create a new database `CREATE DATABASE <database_name>`. Setup tables in the database afterward.
+4. Initialize your MySQL instance and create a new database `CREATE DATABASE <database_name>`. Setup tables in the database using `dbsetup.py`.
 
 ```
 cd setup
