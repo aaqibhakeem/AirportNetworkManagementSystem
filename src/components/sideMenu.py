@@ -14,14 +14,18 @@ class SideMenu(QWidget):
         layout.setSpacing(5)
 
         self.buttons = []
-        icons = [(QIcon("icons/airports.png"), QIcon("icons/airports.png")),
+        icons = [
+            (QIcon("icons/airports.png"), QIcon("icons/airports.png")),
             (QIcon("icons/airlines.png"), QIcon("icons/airlines.png")),
             (QIcon("icons/flights.png"), QIcon("icons/flights.png")),
             (QIcon("icons/routes.png"), QIcon("icons/routes.png")),
-            (QIcon("icons/shortestpath.png"), QIcon("icons/shortestpath.png"))
-            ]
+            (QIcon("icons/shortestpath.png"), QIcon("icons/shortestpath.png")),
+            (QIcon("icons/advanced.png"), QIcon("icons/advanced.png"))  # Added icon for Advanced
+        ]
         
-        for table, (icon, collapsed_icon) in zip(["Airports", "Airlines", "Flights", "Routes", "Shortest Path"], icons):
+        menu_items = ["Airports", "Airlines", "Flights", "Routes", "Shortest Path", "Advanced"]
+        
+        for table, (icon, collapsed_icon) in zip(menu_items, icons):
             btn = SideMenuButton(table, icon, collapsed_icon)
             self.buttons.append(btn)
             layout.addWidget(btn)
@@ -49,10 +53,11 @@ class SideMenu(QWidget):
             self.animation.setEndValue(50)
             for button in self.buttons:
                 button.setText("")
+                button.setCollapsed(True)
         else:
             self.animation.setStartValue(50)
             self.animation.setEndValue(200)
-            for button, text in zip(self.buttons, ["Airports", "Airlines", "Flights", "Routes", "Shortest Path"]):
+            for button, text in zip(self.buttons, ["Airports", "Airlines", "Flights", "Routes", "Shortest Path", "Advanced"]):
                 button.setText(text)
                 button.setCollapsed(False)
         self.animation.start()

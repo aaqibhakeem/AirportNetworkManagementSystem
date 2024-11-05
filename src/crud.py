@@ -1,4 +1,4 @@
-import mysql.connector, sys, os
+import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dbdetails import get_connection
 
@@ -74,7 +74,7 @@ class CRUDOperations:
         print(f"Airport {airport_code} deleted successfully!")
         self.close_db_connection()
 
-    ### CRUD Operations for Airlines ###
+    ### CRUD Operations for Airlines with Flight Counts ###
     def create_airline(self, airline_code, airline_name, headquarters, fleet_size, country):
         self.get_db_connection()
         query = """
@@ -88,10 +88,172 @@ class CRUDOperations:
 
     def read_airlines(self):
         self.get_db_connection()
-        self.cursor.execute("SELECT * FROM Airlines")
-        airlines = self.cursor.fetchall()
+        
+        try:
+            # Execute the stored procedure to get flight counts
+            self.cursor.callproc('CountFlightsByAirline')
+            flight_counts = {row[0]: row[1] for row in self.cursor.fetchall()}  # Map airline_code to flight count
+
+            # Query airline details
+            self.cursor.execute("SELECT * FROM Airlines")
+            airlines = self.cursor.fetchall()
+
+            # Combine airline details with flight counts
+            airlines_with_counts = []
+            for airline in airlines:
+                airline_code = airline[0]
+                flight_count = flight_counts.get(airline_code, 0)
+                airlines_with_counts.append(airline + (flight_count,))  # Append flight count to each airline's details
+
+            return airlines_with_counts
+
+        except ValueError as e:
+            print(f"Error: {e}")
+            # If the stored procedure doesn't exist, return airlines without flight counts
+            if e.errno == 1305:  # Error number for "PROCEDURE does not exist"
+                self.cursor.execute("SELECT * FROM Airlines")
+                return self.cursor.fetchall()
+            else:
+                raise  # Re-raise the exception if it's not the "procedure doesn't exist" error
+
+        finally:
+            self.close_db_connection()
+
+    def ensure_count_flights_procedure_exists(self):
+        self.get_db_connection()
+        try:
+            # Check if the procedure exists
+            self.cursor.execute("SHOW PROCEDURE STATUS WHERE Name = 'CountFlightsByAirline'")
+            if not self.cursor.fetchone():
+                # Create the procedure if it doesn't exist
+                create_procedure_query = """
+                CREATE PROCEDURE CountFlightsByAirline()
+                BEGIN
+                    SELECT a.airline_code, COUNT(f.flight_id) as flight_count
+                    FROM Airlines a
+                    LEFT JOIN Flights f ON a.airline_code = f.airline_code
+                    GROUP BY a.airline_code;
+                END
+                """
+                self.cursor.execute(create_procedure_query)
+                self.conn.commit()
+                
+        except ValueError as e:
+            print(f"Error ensuring CountFlightsByAirline procedure: {e}")
+        finally:
+            self.close_db_connection()
+
+    def ensure_flight_logs_table_exists(self):
+        self.get_db_connection()
+        try:
+            create_table_query = """
+            CREATE TABLE IF NOT EXISTS FlightLogs (
+                log_id INT AUTO_INCREMENT PRIMARY KEY,
+                flight_id VARCHAR(50),
+                action VARCHAR(20),
+                timestamp DATETIME
+            )
+            """
+            self.cursor.execute(create_table_query)
+            self.conn.commit()
+        except ValueError as e:
+            print(f"Error ensuring FlightLogs table: {e}")
+            self.conn.rollback()
+        finally:
+            self.close_db_connection()
+
+    def create_flight_log_trigger(self):
+        self.get_db_connection()
+        try:
+            trigger_query = """
+            CREATE TRIGGER IF NOT EXISTS after_flight_insert
+            AFTER INSERT ON Flights
+            FOR EACH ROW
+            BEGIN
+                INSERT INTO FlightLogs (flight_id, action, timestamp)
+                VALUES (NEW.flight_id, 'INSERT', NOW());
+            END;
+            """
+            self.cursor.execute(trigger_query)
+            self.conn.commit()
+        except ValueError as e:
+            print(f"Error creating flight log trigger: {e}")
+            self.conn.rollback()
+        finally:
+            self.close_db_connection()
+
+    def create_update_route_duration_procedure(self):
+        self.get_db_connection()
+        try:
+            # Drop the procedure if it exists
+            drop_procedure_query = "DROP PROCEDURE IF EXISTS UpdateRouteDuration"
+            self.cursor.execute(drop_procedure_query)
+            
+            # Create the procedure
+            procedure_query = """
+            CREATE PROCEDURE UpdateRouteDuration(IN route_id INT)
+            BEGIN
+                UPDATE Routes r
+                SET r.duration = (
+                    SELECT TIMESTAMPDIFF(MINUTE, f1.timestamp, f2.timestamp)
+                    FROM Flights f1
+                    JOIN Flights f2 ON f1.destination_airport = f2.source_airport
+                    WHERE f1.source_airport = r.source_airport
+                    AND f2.destination_airport = r.destination_airport
+                    LIMIT 1
+                )
+                WHERE r.route_id = route_id;
+            END
+            """
+            self.cursor.execute(procedure_query)
+            self.conn.commit()
+        except ValueError as e:
+            print(f"Error creating update route duration procedure: {e}")
+            self.conn.rollback()
+        finally:
+            self.close_db_connection()
+
+    def get_flights_with_airline_info(self):
+        self.get_db_connection()
+        query = """
+        SELECT f.flight_id, f.source_airport, f.destination_airport, 
+               a.airline_name, a.headquarters
+        FROM Flights f
+        JOIN Airlines a ON f.airline_code = a.airline_code
+        """
+        self.cursor.execute(query)
+        flights_with_airline_info = self.cursor.fetchall()
         self.close_db_connection()
-        return airlines
+        return flights_with_airline_info
+
+    def get_airport_flight_counts(self):
+        self.get_db_connection()
+        query = """
+        SELECT a.airport_code, a.airport_name, 
+               COUNT(f.flight_id) as flight_count
+        FROM Airports a
+        LEFT JOIN Flights f ON a.airport_code = f.source_airport
+        GROUP BY a.airport_code, a.airport_name
+        """
+        self.cursor.execute(query)
+        airport_flight_counts = self.cursor.fetchall()
+        self.close_db_connection()
+        return airport_flight_counts
+
+    def get_routes_with_stopover_count(self):
+        self.get_db_connection()
+        query = """
+        SELECT r.route_id, r.source_airport, r.destination_airport,
+               (SELECT COUNT(DISTINCT f.destination_airport)
+                FROM Flights f
+                WHERE f.source_airport = r.source_airport
+                AND f.destination_airport != r.destination_airport) as stopover_count
+        FROM Routes r
+        """
+        self.cursor.execute(query)
+        routes_with_stopover_count = self.cursor.fetchall()
+        self.close_db_connection()
+        return routes_with_stopover_count    
 
     def update_airline(self, airline_code, new_airline_name=None, new_headquarters=None, new_fleet_size=None, new_country=None):
         self.get_db_connection()

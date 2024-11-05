@@ -13,9 +13,11 @@ class MainWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint)
 
         self.setWindowTitle("Airport Network Management System")
+        screen = QApplication.primaryScreen().availableGeometry()
+        self.setGeometry(screen)
         self.setGeometry(100, 100, 1000, 300)
         self.crud_operations = CRUDOperations()
-
+        self.crud_operations.ensure_count_flights_procedure_exists()
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
@@ -244,13 +246,63 @@ class MainWindow(QMainWindow):
         self.notification.show_message("Route stored successfully")
 
     def create_pages(self):
-        for table in ["Airports", "Airlines", "Flights", "Routes", "Shortest Path"]:
+        for table in ["Airports", "Airlines", "Flights", "Routes", "Shortest Path", "Advanced"]:
             if table == "Shortest Path":
                 page = self.create_shortest_path_page()
+            elif table == "Advanced":
+                page = self.create_advanced_queries_page()
             else:
                 page = self.create_table_page(table)
             self.pages[table] = page
             self.stacked_widget.addWidget(page)
+
+    def create_advanced_queries_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        # Flights with Airline Info
+        flights_button = QPushButton("Show Flights with Airline Info")
+        flights_button.clicked.connect(self.show_flights_with_airline_info)
+        layout.addWidget(flights_button)
+
+        # Airport Flight Counts
+        airport_counts_button = QPushButton("Show Airport Flight Counts")
+        airport_counts_button.clicked.connect(self.show_airport_flight_counts)
+        layout.addWidget(airport_counts_button)
+
+        # Routes with Stopover Count
+        routes_button = QPushButton("Show Routes with Stopover Count")
+        routes_button.clicked.connect(self.show_routes_with_stopover_count)
+        layout.addWidget(routes_button)
+
+        # Results Table
+        self.results_table = QTableWidget()
+        layout.addWidget(self.results_table)
+
+        return page
+
+    def show_flights_with_airline_info(self):
+        results = self.crud_operations.get_flights_with_airline_info()
+        self.display_results(results, ["Flight ID", "Source", "Destination", "Airline", "Headquarters"])
+
+    def show_airport_flight_counts(self):
+        results = self.crud_operations.get_airport_flight_counts()
+        self.display_results(results, ["Airport Code", "Airport Name", "Flight Count"])
+
+    def show_routes_with_stopover_count(self):
+        results = self.crud_operations.get_routes_with_stopover_count()
+        self.display_results(results, ["Route ID", "Source", "Destination", "Stopover Count"])
+
+    def display_results(self, results, headers):
+        self.results_table.setRowCount(len(results))
+        self.results_table.setColumnCount(len(headers))
+        self.results_table.setHorizontalHeaderLabels(headers)
+
+        for row, record in enumerate(results):
+            for col, value in enumerate(record):
+                self.results_table.setItem(row, col, QTableWidgetItem(str(value)))
+
+        self.results_table.resizeColumnsToContents()
 
     def create_table_page(self, table):
         page = QWidget()
@@ -324,7 +376,8 @@ class MainWindow(QMainWindow):
                 current_page = self.pages[table]
                 self.stacked_widget.setCurrentWidget(current_page)
                 
-                if table != "Shortest Path":
+                # Only populate table for pages that have a table_widget
+                if table not in ["Shortest Path", "Advanced"] and hasattr(current_page, 'table_widget'):
                     self.populate_table(table, current_page.table_widget)
             else:
                 print(f"Warning: '{table}' page not found")
@@ -456,7 +509,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(label)
 
         self.combo_box = QComboBox()
-        self.combo_box.addItems(["Airports", "Airlines", "Flights", "Routes"])
+        self.combo_box.addItems(["Airports", "Airlines", "Flights", "Routes", "Advanced"])
         self.combo_box.setStyleSheet("font-size: 16px; padding: 5px;")
         layout.addWidget(self.combo_box)
 

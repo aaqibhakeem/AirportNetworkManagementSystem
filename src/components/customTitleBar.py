@@ -8,17 +8,17 @@ class CustomTitleBar(QWidget):
         self.parent = parent
         self.layout = QHBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.setFixedHeight(30)
+        self.setFixedHeight(40)
 
         self.title = QLabel("Airport Network Management System")
         self.title.setStyleSheet("color: white; padding-left: 3px")
         
         self.btn_minimize = QPushButton(QIcon("icons/minimize.png"), "")
-        self.btn_maximize = QPushButton(QIcon("icons/maximize1.png"), "")
+        self.btn_maximize = QPushButton(QIcon("icons/maximize.png"), "")
         self.btn_close = QPushButton(QIcon("icons/close.png"), "")
 
         for btn in [self.btn_minimize, self.btn_maximize, self.btn_close]:
-            btn.setFixedSize(30, 30)
+            btn.setFixedSize(40, 40)
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: transparent;
