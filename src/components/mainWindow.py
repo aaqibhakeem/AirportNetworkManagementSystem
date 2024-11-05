@@ -275,11 +275,27 @@ class MainWindow(QMainWindow):
         routes_button.clicked.connect(self.show_routes_with_stopover_count)
         layout.addWidget(routes_button)
 
+        # Flight Logs
+        flight_log_button = QPushButton("Show Flight Log")
+        flight_log_button.clicked.connect(self.show_flight_logs)
+        layout.addWidget(flight_log_button)
+
         # Results Table
         self.results_table = QTableWidget()
         layout.addWidget(self.results_table)
 
         return page
+
+    def read_flight_logs(self):
+        self.crud_operations.get_db_connection()
+        self.crud_operations.cursor.execute("SELECT * FROM FlightLogs ORDER BY timestamp DESC")
+        logs = self.crud_operations.cursor.fetchall()
+        self.crud_operations.close_db_connection()
+        return logs
+
+    def show_flight_logs(self):
+        logs = self.read_flight_logs()
+        self.display_results(logs, ["Log ID", "Flight ID", "Action", "Timestamp"])
 
     def show_flights_with_airline_info(self):
         results = self.crud_operations.get_flights_with_airline_info()
@@ -303,6 +319,7 @@ class MainWindow(QMainWindow):
                 self.results_table.setItem(row, col, QTableWidgetItem(str(value)))
 
         self.results_table.resizeColumnsToContents()
+        self.results_table.show()
 
     def create_table_page(self, table):
         page = QWidget()

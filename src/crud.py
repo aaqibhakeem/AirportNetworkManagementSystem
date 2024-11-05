@@ -92,7 +92,10 @@ class CRUDOperations:
         try:
             # Execute the stored procedure to get flight counts
             self.cursor.callproc('CountFlightsByAirline')
-            flight_counts = {row[0]: row[1] for row in self.cursor.fetchall()}  # Map airline_code to flight count
+            
+            # Consume the results from the stored procedure
+            for result in self.cursor.stored_results():
+                flight_counts = {row[0]: row[1] for row in result.fetchall()}
 
             # Query airline details
             self.cursor.execute("SELECT * FROM Airlines")
@@ -103,7 +106,7 @@ class CRUDOperations:
             for airline in airlines:
                 airline_code = airline[0]
                 flight_count = flight_counts.get(airline_code, 0)
-                airlines_with_counts.append(airline + (flight_count,))  # Append flight count to each airline's details
+                airlines_with_counts.append(airline + (flight_count,))
 
             return airlines_with_counts
 
