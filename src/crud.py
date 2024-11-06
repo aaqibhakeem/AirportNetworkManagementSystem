@@ -243,20 +243,22 @@ class CRUDOperations:
         self.close_db_connection()
         return airport_flight_counts
 
-    def get_routes_with_stopover_count(self):
+    def get_busiest_airports(self, limit=10):
         self.get_db_connection()
         query = """
-        SELECT r.route_id, r.source_airport, r.destination_airport,
-               (SELECT COUNT(DISTINCT f.destination_airport)
-                FROM Flights f
-                WHERE f.source_airport = r.source_airport
-                AND f.destination_airport != r.destination_airport) as stopover_count
-        FROM Routes r
+        SELECT a.airport_code, a.airport_name,
+               (SELECT COUNT(*) 
+                FROM Flights f 
+                WHERE f.source_airport = a.airport_code OR f.destination_airport = a.airport_code
+               ) as total_flights
+        FROM Airports a
+        ORDER BY total_flights DESC
+        LIMIT %s
         """
-        self.cursor.execute(query)
-        routes_with_stopover_count = self.cursor.fetchall()
+        self.cursor.execute(query, (limit,))
+        busiest_airports = self.cursor.fetchall()
         self.close_db_connection()
-        return routes_with_stopover_count    
+        return busiest_airports
 
     def update_airline(self, airline_code, new_airline_name=None, new_headquarters=None, new_fleet_size=None, new_country=None):
         self.get_db_connection()

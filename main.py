@@ -1,6 +1,5 @@
 from imports import *
 from src.components.mainWindow import MainWindow
-from src.crud import CRUDOperations
 
 if __name__ == "__main__":
     crud = CRUDOperations()
