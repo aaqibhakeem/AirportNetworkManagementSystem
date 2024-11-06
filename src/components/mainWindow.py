@@ -17,7 +17,6 @@ class MainWindow(QMainWindow):
         self.setGeometry(screen)
         self.setGeometry(100, 100, 1000, 300)
         self.crud_operations = CRUDOperations()
-        self.crud_operations.ensure_count_flights_procedure_exists()
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
@@ -275,16 +274,58 @@ class MainWindow(QMainWindow):
         routes_button.clicked.connect(self.show_routes_with_stopover_count)
         layout.addWidget(routes_button)
 
+        # Flight Logs buttons container
+        log_buttons_layout = QHBoxLayout()
+        
         # Flight Logs
         flight_log_button = QPushButton("Show Flight Log")
         flight_log_button.clicked.connect(self.show_flight_logs)
-        layout.addWidget(flight_log_button)
+        log_buttons_layout.addWidget(flight_log_button)
+        
+        # Clear Flight Logs
+        clear_log_button = QPushButton("Clear Flight Log")
+        clear_log_button.clicked.connect(self.clear_flight_logs)
+        clear_log_button.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 5px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+        """)
+        log_buttons_layout.addWidget(clear_log_button)
+        
+        layout.addLayout(log_buttons_layout)
 
         # Results Table
         self.results_table = QTableWidget()
         layout.addWidget(self.results_table)
 
         return page
+
+    def clear_flight_logs(self):
+        try:
+            conn = get_connection()  # Get a new connection from dbdetails
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM FlightLogs")
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            # Clear the table if it's currently displaying logs
+            self.results_table.setRowCount(0)
+            self.results_table.setColumnCount(0)
+            
+            # Show success notification
+            self.notification.show_message("Flight logs cleared successfully")
+        except Exception as e:
+            # Show error notification
+            self.notification.show_message(f"Error clearing flight logs: {str(e)}")
 
     def read_flight_logs(self):
         self.crud_operations.get_db_connection()
@@ -783,85 +824,113 @@ class MainWindow(QMainWindow):
             table_widget.setRowHidden(row, not match)
 
     def handle_crud_action(self, operation, table):
-        try:
-            if operation == "Create":
-                if table == "Airports":
-                    airport_code = self.form_fields['airport_code'].text().strip() or None
-                    airport_name = self.form_fields['airport_name'].text().strip() or None
-                    latitude = self.form_fields['latitude_deg'].text().strip() or None
-                    longitude = self.form_fields['longitude_deg'].text().strip() or None
-                    state = self.form_fields['state'].text().strip() or None
-                    city = self.form_fields['city'].text().strip() or None
-                    
-                    if not airport_code:
-                        raise ValueError("Airport code is required")
-                    
-                    self.crud_operations.create_airport(
-                        airport_code, airport_name, latitude, longitude, state, city
-                    )
-                    
-                elif table == "Airlines":
-                    airline_code = self.form_fields['airline_code'].text().strip() or None
-                    airline_name = self.form_fields['airline_name'].text().strip() or None
-                    headquarters = self.form_fields['headquarters'].text().strip() or None
-                    fleet_size = self.form_fields['fleet_size'].text().strip() or None
-                    country = self.form_fields['country'].text().strip() or None
-                    
-                    if not airline_code:
-                        raise ValueError("Airline code is required")
-                    
-                    self.crud_operations.create_airline(
-                        airline_code, airline_name, headquarters, fleet_size, country
-                    )
-
-            elif operation == "Update":
-                if table == "Airports":
-                    airport_code = self.form_fields['airport_code'].text().strip()
-                    if not airport_code:
-                        raise ValueError("Airport code is required for update")
-                    
-                    self.crud_operations.update_airport(
-                        airport_code,
-                        new_airport_name=self.form_fields['airport_name'].text().strip() or None,
-                        new_latitude=self.form_fields['latitude_deg'].text().strip() or None,
-                        new_longitude=self.form_fields['longitude_deg'].text().strip() or None,
-                        new_state=self.form_fields['state'].text().strip() or None,
-                        new_city=self.form_fields['city'].text().strip() or None
-                    )
-                    
-                elif table == "Airlines":
-                    airline_code = self.form_fields['airline_code'].text().strip()
-                    if not airline_code:
-                        raise ValueError("Airline code is required for update")
-                    
-                    self.crud_operations.update_airline(
-                        airline_code,
-                        new_airline_name=self.form_fields['airline_name'].text().strip() or None,
-                        new_headquarters=self.form_fields['headquarters'].text().strip() or None,
-                        new_fleet_size=self.form_fields['fleet_size'].text().strip() or None,
-                        new_country=self.form_fields['country'].text().strip() or None
-                    )
-
-            elif operation == "Delete":
-                primary_key_field = self.get_primary_key_field(table)
-                primary_key_value = self.form_fields[primary_key_field].text().strip()
+        if operation == "Create":
+            if table == "Airports":
+                airport_code = self.form_fields['airport_code'].text().strip() or None
+                airport_name = self.form_fields['airport_name'].text().strip() or None
+                latitude = self.form_fields['latitude_deg'].text().strip() or None
+                longitude = self.form_fields['longitude_deg'].text().strip() or None
+                state = self.form_fields['state'].text().strip() or None
+                city = self.form_fields['city'].text().strip() or None
                 
-                if not primary_key_value:
-                    raise ValueError(f"{primary_key_field.replace('_', ' ').title()} is required for deletion")
+                if not airport_code:
+                    raise ValueError("Airport code is required")
                 
-                if table == "Airports":
-                    self.crud_operations.delete_airport(primary_key_value)
-                elif table == "Airlines":
-                    self.crud_operations.delete_airline(primary_key_value)
-                elif table == "Flights":
-                    self.crud_operations.delete_flight(primary_key_value)
-                elif table == "Routes":
-                    self.crud_operations.delete_route(primary_key_value)
+                self.crud_operations.create_airport(
+                    airport_code, airport_name, latitude, longitude, state, city
+                )
+                
+            elif table == "Airlines":
+                airline_code = self.form_fields['airline_code'].text().strip() or None
+                airline_name = self.form_fields['airline_name'].text().strip() or None
+                headquarters = self.form_fields['headquarters'].text().strip() or None
+                fleet_size = self.form_fields['fleet_size'].text().strip() or None
+                country = self.form_fields['country'].text().strip() or None
+                
+                if not airline_code:
+                    raise ValueError("Airline code is required")
+                
+                self.crud_operations.create_airline(
+                    airline_code, airline_name, headquarters, fleet_size, country
+                )
 
-            self.notification.show_message(f"{operation} operation completed successfully.")
-            self.stacked_widget.setCurrentWidget(self.pages[table])
-        except Exception as e:
-            self.notification.show_message(f"An error occurred: {str(e)}")
+            elif table == "Flights":
+                flight_id = self.form_fields['flight_id'].text().strip() or None
+                airline_code = self.form_fields['airline_code'].text().strip() or None
+                source_airport = self.form_fields['source_airport'].text().strip() or None
+                destination_airport = self.form_fields['destination_airport'].text().strip() or None
+                latitude = self.form_fields['latitude_deg'].text().strip() or None
+                longitude = self.form_fields['longitude_deg'].text().strip() or None
+                timestamp = self.form_fields['timestamp'].text().strip() or None
+
+                if not flight_id:
+                    raise ValueError("Flight ID is required")
+                
+                self.crud_operations.create_flight(
+                    flight_id, airline_code, source_airport, destination_airport, latitude, longitude, timestamp
+                )
+
+        elif operation == "Update":
+            if table == "Airports":
+                airport_code = self.form_fields['airport_code'].text().strip()
+                if not airport_code:
+                    raise ValueError("Airport code is required for update")
+                
+                self.crud_operations.update_airport(
+                    airport_code,
+                    new_airport_name=self.form_fields['airport_name'].text().strip() or None,
+                    new_latitude=self.form_fields['latitude_deg'].text().strip() or None,
+                    new_longitude=self.form_fields['longitude_deg'].text().strip() or None,
+                    new_state=self.form_fields['state'].text().strip() or None,
+                    new_city=self.form_fields['city'].text().strip() or None
+                )
+                
+            elif table == "Airlines":
+                airline_code = self.form_fields['airline_code'].text().strip()
+                if not airline_code:
+                    raise ValueError("Airline code is required for update")
+                
+                self.crud_operations.update_airline(
+                    airline_code,
+                    new_airline_name=self.form_fields['airline_name'].text().strip() or None,
+                    new_headquarters=self.form_fields['headquarters'].text().strip() or None,
+                    new_fleet_size=self.form_fields['fleet_size'].text().strip() or None,
+                    new_country=self.form_fields['country'].text().strip() or None
+                )
+            
+            elif table == "Flights":
+                flight_id = self.form_fields['flight_id'].text().strip() or None
+                if not flight_id:
+                    raise ValueError("Flight ID is required")
+                
+                self.crud_operations.update_flight(
+                    flight_id,
+                    new_airline_code=self.form_fields['airline_code'].text().strip() or None,
+                    new_source_airport=self.form_fields['source_airport'].text().strip() or None,
+                    new_destination_airport=self.form_fields['destination_airport'].text().strip() or None,
+                    new_latitude=self.form_fields['latitude_deg'].text().strip() or None,
+                    new_longitude=self.form_fields['longitude_deg'].text().strip() or None,
+                    new_timestamp=self.form_fields['timestamp'].text().strip() or None
+                )
+
+        elif operation == "Delete":
+            primary_key_field = self.get_primary_key_field(table)
+            primary_key_value = self.form_fields[primary_key_field].text().strip()
+            
+            if not primary_key_value:
+                raise ValueError(f"{primary_key_field.replace('_', ' ').title()} is required for deletion")
+            
+            if table == "Airports":
+                self.crud_operations.delete_airport(primary_key_value)
+            elif table == "Airlines":
+                self.crud_operations.delete_airline(primary_key_value)
+            elif table == "Flights":
+                self.crud_operations.delete_flight(primary_key_value)
+            elif table == "Routes":
+                self.crud_operations.delete_route(primary_key_value)
+
+        self.notification.show_message(f"{operation} operation completed successfully.")
+        self.stacked_widget.setCurrentWidget(self.pages[table])
 
     def get_primary_key_field(self, table):
         primary_keys = {

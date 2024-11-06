@@ -110,7 +110,7 @@ class CRUDOperations:
 
             return airlines_with_counts
 
-        except ValueError as e:
+        except Exception as e:
             print(f"Error: {e}")
             # If the stored procedure doesn't exist, return airlines without flight counts
             if e.errno == 1305:  # Error number for "PROCEDURE does not exist"
@@ -124,66 +124,81 @@ class CRUDOperations:
 
     def ensure_count_flights_procedure_exists(self):
         self.get_db_connection()
-        try:
-            # Check if the procedure exists
-            self.cursor.execute("SHOW PROCEDURE STATUS WHERE Name = 'CountFlightsByAirline'")
-            if not self.cursor.fetchone():
-                # Create the procedure if it doesn't exist
-                create_procedure_query = """
-                CREATE PROCEDURE CountFlightsByAirline()
-                BEGIN
-                    SELECT a.airline_code, COUNT(f.flight_id) as flight_count
-                    FROM Airlines a
-                    LEFT JOIN Flights f ON a.airline_code = f.airline_code
-                    GROUP BY a.airline_code;
-                END
-                """
-                self.cursor.execute(create_procedure_query)
-                self.conn.commit()
-                
-        except ValueError as e:
-            print(f"Error ensuring CountFlightsByAirline procedure: {e}")
-        finally:
-            self.close_db_connection()
+        # Check if the procedure exists
+        self.cursor.execute("SHOW PROCEDURE STATUS WHERE Name = 'CountFlightsByAirline'")
+        if not self.cursor.fetchone():
+            # Create the procedure if it doesn't exist
+            create_procedure_query = """
+            CREATE PROCEDURE CountFlightsByAirline()
+            BEGIN
+                SELECT a.airline_code, COUNT(f.flight_id) as flight_count
+                FROM Airlines a
+                LEFT JOIN Flights f ON a.airline_code = f.airline_code
+                GROUP BY a.airline_code;
+            END
+            """
+            self.cursor.execute(create_procedure_query)
+            self.conn.commit()
+        self.close_db_connection()
 
     def ensure_flight_logs_table_exists(self):
         self.get_db_connection()
-        try:
-            create_table_query = """
-            CREATE TABLE IF NOT EXISTS FlightLogs (
-                log_id INT AUTO_INCREMENT PRIMARY KEY,
-                flight_id VARCHAR(50),
-                action VARCHAR(20),
-                timestamp DATETIME
-            )
-            """
-            self.cursor.execute(create_table_query)
-            self.conn.commit()
-        except ValueError as e:
-            print(f"Error ensuring FlightLogs table: {e}")
-            self.conn.rollback()
-        finally:
-            self.close_db_connection()
+        create_table_query = """
+        CREATE TABLE IF NOT EXISTS FlightLogs (
+            log_id INT AUTO_INCREMENT PRIMARY KEY,
+            flight_id VARCHAR(50),
+            action VARCHAR(20),
+            timestamp DATETIME
+        )
+        """
+        self.cursor.execute(create_table_query)
+        self.conn.commit()
+    
+        self.close_db_connection()
 
-    def create_flight_log_trigger(self):
+    def create_flight_log_triggers(self):
         self.get_db_connection()
-        try:
-            trigger_query = """
-            CREATE TRIGGER IF NOT EXISTS after_flight_insert
-            AFTER INSERT ON Flights
-            FOR EACH ROW
-            BEGIN
-                INSERT INTO FlightLogs (flight_id, action, timestamp)
-                VALUES (NEW.flight_id, 'INSERT', NOW());
-            END;
-            """
-            self.cursor.execute(trigger_query)
-            self.conn.commit()
-        except ValueError as e:
-            print(f"Error creating flight log trigger: {e}")
-            self.conn.rollback()
-        finally:
-            self.close_db_connection()
+        
+        # Insert trigger
+        insert_trigger = """
+        CREATE TRIGGER IF NOT EXISTS after_flight_insert
+        AFTER INSERT ON Flights
+        FOR EACH ROW
+        BEGIN
+            INSERT INTO FlightLogs (flight_id, action, timestamp)
+            VALUES (NEW.flight_id, 'INSERT', NOW());
+        END;
+        """
+        
+        # Update trigger
+        update_trigger = """
+        CREATE TRIGGER IF NOT EXISTS after_flight_update
+        AFTER UPDATE ON Flights
+        FOR EACH ROW
+        BEGIN
+            INSERT INTO FlightLogs (flight_id, action, timestamp)
+            VALUES (NEW.flight_id, 'UPDATE', NOW());
+        END;
+        """
+        
+        # Delete trigger
+        delete_trigger = """
+        CREATE TRIGGER IF NOT EXISTS after_flight_delete
+        AFTER DELETE ON Flights
+        FOR EACH ROW
+        BEGIN
+            INSERT INTO FlightLogs (flight_id, action, timestamp)
+            VALUES (OLD.flight_id, 'DELETE', NOW());
+        END;
+        """
+        
+        # Execute all triggers
+        self.cursor.execute(insert_trigger)
+        self.cursor.execute(update_trigger)
+        self.cursor.execute(delete_trigger)
+        
+        self.conn.commit()
+        self.close_db_connection()
 
     def create_update_route_duration_procedure(self):
         self.get_db_connection()
@@ -210,7 +225,7 @@ class CRUDOperations:
             """
             self.cursor.execute(procedure_query)
             self.conn.commit()
-        except ValueError as e:
+        except Exception as e:
             print(f"Error creating update route duration procedure: {e}")
             self.conn.rollback()
         finally:
@@ -294,16 +309,54 @@ class CRUDOperations:
         self.close_db_connection()
 
     ### CRUD Operations for Flights ###
-    def create_flight(self, flight_id, airline_code, source_airport, destination_airport, latitude_deg, longitude_deg, timestamp):
-        self.get_db_connection()
-        query = """
-            INSERT INTO Flights (flight_id, airline_code, source_airport, destination_airport, latitude_deg, longitude_deg, timestamp)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-        self.cursor.execute(query, (flight_id, airline_code, source_airport, destination_airport, latitude_deg, longitude_deg, timestamp))
-        self.conn.commit()
-        print(f"Flight {flight_id} added successfully!")
-        self.close_db_connection()
+    def check_airline_exists(self, airline_code):
+        """Check if airline exists before adding/updating flights"""
+        self.cursor.execute("SELECT airline_code FROM Airlines WHERE airline_code = %s", (airline_code,))
+        return self.cursor.fetchone() is not None
+
+    def check_airports_exist(self, source_airport, destination_airport):
+        """Check if both airports exist before adding/updating flights"""
+        self.cursor.execute(
+            "SELECT airport_code FROM Airports WHERE airport_code IN (%s, %s)",
+            (source_airport, destination_airport)
+        )
+        existing_airports = [row[0] for row in self.cursor.fetchall()]
+        return (source_airport in existing_airports and 
+                destination_airport in existing_airports)
+
+    def create_flight(self, flight_id, airline_code, source_airport, destination_airport, 
+                     latitude_deg, longitude_deg, timestamp):
+        try:
+            self.get_db_connection()
+            
+            # Validate airline exists
+            if not self.check_airline_exists(airline_code):
+                raise ValueError(f"Airline with code {airline_code} does not exist. "
+                               f"Please add the airline first.")
+
+            # Validate airports exist
+            if not self.check_airports_exist(source_airport, destination_airport):
+                raise ValueError(f"One or both airports ({source_airport}, {destination_airport}) "
+                               f"do not exist. Please add the airports first.")
+
+            query = """
+                INSERT INTO Flights (flight_id, airline_code, source_airport, 
+                                   destination_airport, latitude_deg, longitude_deg, timestamp)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+            self.cursor.execute(query, (flight_id, airline_code, source_airport,
+                                      destination_airport, latitude_deg, longitude_deg, timestamp))
+            self.conn.commit()
+            print(f"Flight {flight_id} added successfully!")
+
+        except ValueError as ve:
+            print(f"Validation Error: {str(ve)}")
+            self.conn.rollback()
+        except Exception as e:
+            print(f"Error creating flight: {str(e)}")
+            self.conn.rollback()
+        finally:
+            self.close_db_connection()
 
     def read_flights(self):
         self.get_db_connection()
@@ -312,38 +365,72 @@ class CRUDOperations:
         self.close_db_connection()
         return flights
 
-    def update_flight(self, flight_id, new_airline_code=None, new_source_airport=None, new_destination_airport=None, new_latitude=None, new_longitude=None, new_timestamp=None):
-        self.get_db_connection()
+    def update_flight(self, flight_id, new_airline_code=None, new_source_airport=None,
+                     new_destination_airport=None, new_latitude=None, new_longitude=None,
+                     new_timestamp=None):
+        try:
+            self.get_db_connection()
 
-        updates = []
-        values = []
-        if new_airline_code:
-            updates.append("airline_code = %s")
-            values.append(new_airline_code)
-        if new_source_airport:
-            updates.append("source_airport = %s")
-            values.append(new_source_airport)
-        if new_destination_airport:
-            updates.append("destination_airport = %s")
-            values.append(new_destination_airport)
-        if new_latitude:
-            updates.append("latitude_deg = %s")
-            values.append(new_latitude)
-        if new_longitude:
-            updates.append("longitude_deg = %s")
-            values.append(new_longitude)
-        if new_timestamp:
-            updates.append("timestamp = %s")
-            values.append(new_timestamp)
+            # Validate airline if being updated
+            if new_airline_code and not self.check_airline_exists(new_airline_code):
+                raise ValueError(f"Airline with code {new_airline_code} does not exist. "
+                               f"Please add the airline first.")
 
-        if updates:
-            query = f"UPDATE Flights SET {', '.join(updates)} WHERE flight_id = %s"
-            values.append(flight_id)
-            self.cursor.execute(query, tuple(values))
-            self.conn.commit()
+            # Validate airports if being updated
+            if new_source_airport or new_destination_airport:
+                current_flight = None
+                if new_source_airport or new_destination_airport:
+                    self.cursor.execute("SELECT source_airport, destination_airport FROM Flights WHERE flight_id = %s",
+                                      (flight_id,))
+                    current_flight = self.cursor.fetchone()
+                    if not current_flight:
+                        raise ValueError(f"Flight with ID {flight_id} does not exist")
 
-        print(f"Flight {flight_id} updated successfully!")
-        self.close_db_connection()
+                source_airport = new_source_airport or current_flight[0]
+                destination_airport = new_destination_airport or current_flight[1]
+                
+                if not self.check_airports_exist(source_airport, destination_airport):
+                    raise ValueError(f"One or both airports ({source_airport}, {destination_airport}) "
+                                   f"do not exist. Please add the airports first.")
+
+            updates = []
+            values = []
+            if new_airline_code:
+                updates.append("airline_code = %s")
+                values.append(new_airline_code)
+            if new_source_airport:
+                updates.append("source_airport = %s")
+                values.append(new_source_airport)
+            if new_destination_airport:
+                updates.append("destination_airport = %s")
+                values.append(new_destination_airport)
+            if new_latitude:
+                updates.append("latitude_deg = %s")
+                values.append(new_latitude)
+            if new_longitude:
+                updates.append("longitude_deg = %s")
+                values.append(new_longitude)
+            if new_timestamp:
+                updates.append("timestamp = %s")
+                values.append(new_timestamp)
+
+            if updates:
+                query = f"UPDATE Flights SET {', '.join(updates)} WHERE flight_id = %s"
+                values.append(flight_id)
+                self.cursor.execute(query, tuple(values))
+                self.conn.commit()
+                print(f"Flight {flight_id} updated successfully!")
+            else:
+                print("No updates provided")
+
+        except ValueError as ve:
+            print(f"Validation Error: {str(ve)}")
+            self.conn.rollback()
+        except Exception as e:
+            print(f"Error updating flight: {str(e)}")
+            self.conn.rollback()
+        finally:
+            self.close_db_connection()
 
     def delete_flight(self, flight_id):
         self.get_db_connection()
