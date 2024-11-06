@@ -1,11 +1,9 @@
 import sys, os
-sys.path.append(os.path.abspath(os.path.join('..', '..', 'imports')))
 from imports import *
 
 class Notification(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         
         self.setStyleSheet("""
@@ -40,16 +38,25 @@ class Notification(QWidget):
         self.setFixedHeight(50)
         
         self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.hide_animation)
+        
         self.geometry_animation = QPropertyAnimation(self, b"geometry")
         self.opacity_animation = QPropertyAnimation(self, b"windowOpacity")
         self.animation_group = QParallelAnimationGroup()
         self.animation_group.addAnimation(self.geometry_animation)
         self.animation_group.addAnimation(self.opacity_animation)
+        self.animation_group.finished.connect(self.on_animation_finished)
 
+        self.is_showing = False
+        self.is_hiding = False
         self.hide()
 
     def show_message(self, message, duration=5000):
+        if self.is_showing or self.is_hiding:
+            return
+
+        self.is_showing = True
         self.label.setText(message)
         self.adjustSize()
         
@@ -76,6 +83,10 @@ class Notification(QWidget):
         self.timer.start(duration)
 
     def hide_animation(self):
+        if self.is_hiding:
+            return
+
+        self.is_hiding = True
         current_geometry = self.geometry()
         
         self.geometry_animation.setDuration(300)
@@ -89,5 +100,26 @@ class Notification(QWidget):
         self.opacity_animation.setEasingCurve(QEasingCurve.InCubic)
 
         self.animation_group.start()
-        self.animation_group.finished.connect(self.hide)
-        self.timer.stop()
+
+    def on_animation_finished(self):
+        if self.is_hiding:
+            self.hide()
+            self.is_hiding = False
+        elif self.is_showing:
+            self.is_showing = False
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setGeometry(100, 100, 800, 600)
+        self.notification = Notification(self)
+        
+        QTimer.singleShot(1000, lambda: self.show_test_notification("First notification", 3000))
+        QTimer.singleShot(2000, lambda: self.show_test_notification("Second notification", 3000))
+        QTimer.singleShot(3000, lambda: self.show_test_notification("Third notification", 3000))
+
+    def show_test_notification(self, message, duration):
+        self.notification.show_message(message, duration)
