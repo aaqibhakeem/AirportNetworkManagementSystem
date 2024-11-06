@@ -22,30 +22,24 @@ class MainWindow(QMainWindow):
         self.main_layout = QVBoxLayout(self.central_widget)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Add custom title bar
         self.title_bar = CustomTitleBar(self)
         self.main_layout.addWidget(self.title_bar)
 
-        # Create content widget
         self.content_widget = QWidget()
         self.content_layout = QHBoxLayout(self.content_widget)
         self.main_layout.addWidget(self.content_widget)
 
-        # Create and add side menu
         self.side_menu = SideMenu()
         self.content_layout.addWidget(self.side_menu)
 
         self.notification = Notification(self)
 
-        # Create stacked widget for main content
         self.stacked_widget = QStackedWidget()
         self.content_layout.addWidget(self.stacked_widget)
 
-        # Create pages
         self.pages = {}
         self.create_pages()
 
-        # Connect side menu buttons
         for button in self.side_menu.buttons:
             button.clicked.connect(self.handle_menu_button_click)
 
@@ -53,7 +47,6 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(self.landing_page)
         self.stacked_widget.setCurrentWidget(self.landing_page)
 
-        # Apply global stylesheet
         self.setStyleSheet("""
             * {
                 color: black;
@@ -144,7 +137,6 @@ class MainWindow(QMainWindow):
         page = QWidget()
         layout = QVBoxLayout(page)
 
-        # Airport selection
         airport_form = QFormLayout()
         self.source_airport = QComboBox()
         self.destination_airport = QComboBox()
@@ -163,30 +155,25 @@ class MainWindow(QMainWindow):
         airport_form.addRow("Number of Stopovers:", self.stopovers)
         layout.addLayout(airport_form)
 
-        # Populate airport dropdowns
         airports = self.crud_operations.read_airports()
         for airport in airports:
             self.source_airport.addItem(f"{airport[0]} - {airport[1]}", airport[0])
             self.destination_airport.addItem(f"{airport[0]} - {airport[1]}", airport[0])
 
-        # Find path button
         find_path_button = QPushButton("Find Shortest Path")
         find_path_button.clicked.connect(self.find_shortest_path)
         layout.addWidget(find_path_button)
 
-        # White box for path details
         self.path_details_box = QTextEdit()
         self.path_details_box.setReadOnly(True)
         self.path_details_box.setStyleSheet("background-color: white; color: black; border: 1px solid #bdc3c7; border-radius: 5px; padding: 5px;")
         self.path_details_box.setFixedHeight(150)
         layout.addWidget(self.path_details_box)
 
-        # Map display
         self.map_view = QGraphicsView()
         self.map_view.setMinimumHeight(400)
         layout.addWidget(self.map_view)
 
-        # Store route button
         self.store_route_button = QPushButton("Store Route")
         self.store_route_button.clicked.connect(self.store_route)
         self.store_route_button.setVisible(False)
@@ -210,7 +197,6 @@ class MainWindow(QMainWindow):
             else:
                 self.shortest_path, self.shortest_distance = ShortestPathAlgorithms.compute_shortest_path_with_exact_vias(G, source, destination, num_vias)
 
-            # Display path details in the white box
             details = f"Shortest path: {' → '.join(self.shortest_path)}\n"
             details += f"Total distance: {self.shortest_distance:.2f} km\n"
             details += f"Number of stopovers: {len(self.shortest_path) - 2}\n"
@@ -222,7 +208,6 @@ class MainWindow(QMainWindow):
             self.store_route_button.setVisible(True)
             self.notification.show_message(f"Shortest path found: {' → '.join(self.shortest_path)}")
 
-            # Create and display the plotly map in a browser
             fig = draw_graph(G, [self.shortest_path])
             plotly.offline.plot(fig, filename='shortest_path_map.html', auto_open=True)
 
@@ -237,7 +222,6 @@ class MainWindow(QMainWindow):
         destination = self.destination_airport.currentData()
         num_vias = self.stopovers.value()
         
-        # Use the existing code from main.py to store the route
         conn = get_connection()
         ask_add_route_to_db(source, destination, self.shortest_path, self.shortest_distance, num_vias, None, conn)
         conn.close()
@@ -259,30 +243,24 @@ class MainWindow(QMainWindow):
         page = QWidget()
         layout = QVBoxLayout(page)
 
-        # Flights with Airline Info
         flights_button = QPushButton("Show Flights with Airline Info")
         flights_button.clicked.connect(self.show_flights_with_airline_info)
         layout.addWidget(flights_button)
 
-        # Airport Flight Counts
         airport_counts_button = QPushButton("Show Airport Flight Counts")
         airport_counts_button.clicked.connect(self.show_airport_flight_counts)
         layout.addWidget(airport_counts_button)
 
-        # Routes with Stopover Count
         routes_button = QPushButton("Show Routes with Stopover Count")
         routes_button.clicked.connect(self.show_routes_with_stopover_count)
         layout.addWidget(routes_button)
 
-        # Flight Logs buttons container
         log_buttons_layout = QHBoxLayout()
         
-        # Flight Logs
         flight_log_button = QPushButton("Show Flight Log")
         flight_log_button.clicked.connect(self.show_flight_logs)
         log_buttons_layout.addWidget(flight_log_button)
         
-        # Clear Flight Logs
         clear_log_button = QPushButton("Clear Flight Log")
         clear_log_button.clicked.connect(self.clear_flight_logs)
         clear_log_button.setStyleSheet("""
@@ -302,7 +280,6 @@ class MainWindow(QMainWindow):
         
         layout.addLayout(log_buttons_layout)
 
-        # Results Table
         self.results_table = QTableWidget()
         layout.addWidget(self.results_table)
 
@@ -310,21 +287,18 @@ class MainWindow(QMainWindow):
 
     def clear_flight_logs(self):
         try:
-            conn = get_connection()  # Get a new connection from dbdetails
+            conn = get_connection()  
             cursor = conn.cursor()
             cursor.execute("DELETE FROM FlightLogs")
             conn.commit()
             cursor.close()
             conn.close()
             
-            # Clear the table if it's currently displaying logs
             self.results_table.setRowCount(0)
             self.results_table.setColumnCount(0)
             
-            # Show success notification
             self.notification.show_message("Flight logs cleared successfully")
         except Exception as e:
-            # Show error notification
             self.notification.show_message(f"Error clearing flight logs: {str(e)}")
 
     def read_flight_logs(self):
@@ -366,7 +340,6 @@ class MainWindow(QMainWindow):
         page = QWidget()
         layout = QVBoxLayout(page)
 
-        # CRUD buttons (excluding Read)
         crud_layout = QHBoxLayout()
         crud_buttons = []
         for operation in ["Create", "Update", "Delete"]:
@@ -392,17 +365,14 @@ class MainWindow(QMainWindow):
             crud_layout.addWidget(btn)
         layout.addLayout(crud_layout)
 
-        # Search bar
         search_bar = QLineEdit()
         search_bar.setPlaceholderText("Search...")
         search_bar.textChanged.connect(lambda: self.filter_table(table))
         layout.addWidget(search_bar)
 
-        # Table
         table_widget = QTableWidget()
         layout.addWidget(table_widget)
 
-        # Store references to widgets
         page.table_widget = table_widget
         page.search_bar = search_bar
 
@@ -415,12 +385,10 @@ class MainWindow(QMainWindow):
             button.clicked_once = False
 
         if button.clicked_once:
-            # Revert to original color and show landing page
             button.setChecked(False)
             button.clicked_once = False
             self.stacked_widget.setCurrentWidget(self.landing_page)
         else:
-            # First click behavior
             for btn in self.side_menu.buttons:
                 if btn != button:
                     btn.setChecked(False)
@@ -434,7 +402,6 @@ class MainWindow(QMainWindow):
                 current_page = self.pages[table]
                 self.stacked_widget.setCurrentWidget(current_page)
                 
-                # Only populate table for pages that have a table_widget
                 if table not in ["Shortest Path", "Advanced"] and hasattr(current_page, 'table_widget'):
                     self.populate_table(table, current_page.table_widget)
             else:
@@ -442,16 +409,13 @@ class MainWindow(QMainWindow):
                 self.notification.show_message(f"Page '{table}' is not available.")
 
     def handle_crud_operation(self, operation, table):
-        # Uncheck all CRUD buttons except the clicked one
         crud_buttons = self.find_crud_buttons(self.pages[table])
         for btn in crud_buttons:
             if btn.text() != operation:
                 btn.setChecked(False)
         
         if table == "Routes" and operation == "Create":
-            # Switch to the Shortest Path tab
             self.stacked_widget.setCurrentWidget(self.pages["Shortest Path"])
-            # Reset the color of the Routes tab
             for btn in self.side_menu.buttons:
                 if btn.text() == "Routes":
                     btn.setChecked(False)
@@ -658,16 +622,13 @@ class MainWindow(QMainWindow):
 
         layout.addLayout(form_layout)
 
-        # Add button layout
         button_layout = QVBoxLayout()
         
-        # Submit button
         submit_button = QPushButton(f"Submit {operation}")
         submit_button.clicked.connect(lambda: self.handle_crud_action(operation))
         submit_button.setStyleSheet("background-color: #2ecc71;")
         button_layout.addWidget(submit_button)
 
-        # Back button
         back_button = QPushButton("Back")
         back_button.clicked.connect(lambda: self.change_page(self.crud_selection_page))
         back_button.setStyleSheet("background-color: #e74c3c;")
@@ -739,7 +700,6 @@ class MainWindow(QMainWindow):
         label.setStyleSheet("font-size: 20px; font-weight: bold;")
         layout.addWidget(label)
 
-        # Add search bar
         search_layout = QHBoxLayout()
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText("Search...")
@@ -750,7 +710,6 @@ class MainWindow(QMainWindow):
         self.table_widget = QTableWidget()
         self.records = []
 
-        # Fetch records from the selected table
         if self.selected_table == "Airports":
             self.records = self.crud_operations.read_airports()
         elif self.selected_table == "Airlines":
@@ -760,7 +719,6 @@ class MainWindow(QMainWindow):
         elif self.selected_table == "Routes":
             self.records = self.crud_operations.read_routes()
 
-        # Display records in the table
         if self.records:
             self.populate_table()
         else:
@@ -769,7 +727,6 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(self.table_widget)
 
-        # Add back button
         back_button = QPushButton("Back")
         back_button.clicked.connect(lambda: self.change_page(self.crud_selection_page))
         layout.addWidget(back_button)
@@ -946,7 +903,6 @@ class MainWindow(QMainWindow):
         current_index = self.stacked_widget.currentIndex()
         new_index = self.stacked_widget.indexOf(new_page)
 
-        # Simple animation
         self.animation = QPropertyAnimation(self.stacked_widget, b"geometry")
         self.animation.setDuration(500)
         if new_index > current_index:

@@ -17,7 +17,6 @@ class CRUDOperations:
         if self.conn:
             self.conn.close()
 
-    ### CRUD Operations for Airports ###
     def create_airport(self, airport_code, airport_name, latitude_deg, longitude_deg, state, city):
         self.get_db_connection()
         query = """
@@ -74,7 +73,6 @@ class CRUDOperations:
         print(f"Airport {airport_code} deleted successfully!")
         self.close_db_connection()
 
-    ### CRUD Operations for Airlines with Flight Counts ###
     def create_airline(self, airline_code, airline_name, headquarters, fleet_size, country):
         self.get_db_connection()
         query = """
@@ -90,18 +88,14 @@ class CRUDOperations:
         self.get_db_connection()
         
         try:
-            # Execute the stored procedure to get flight counts
             self.cursor.callproc('CountFlightsByAirline')
             
-            # Consume the results from the stored procedure
             for result in self.cursor.stored_results():
                 flight_counts = {row[0]: row[1] for row in result.fetchall()}
 
-            # Query airline details
             self.cursor.execute("SELECT * FROM Airlines")
             airlines = self.cursor.fetchall()
 
-            # Combine airline details with flight counts
             airlines_with_counts = []
             for airline in airlines:
                 airline_code = airline[0]
@@ -112,22 +106,19 @@ class CRUDOperations:
 
         except Exception as e:
             print(f"Error: {e}")
-            # If the stored procedure doesn't exist, return airlines without flight counts
-            if e.errno == 1305:  # Error number for "PROCEDURE does not exist"
+            if e.errno == 1305:
                 self.cursor.execute("SELECT * FROM Airlines")
                 return self.cursor.fetchall()
             else:
-                raise  # Re-raise the exception if it's not the "procedure doesn't exist" error
+                raise
 
         finally:
             self.close_db_connection()
 
     def ensure_count_flights_procedure_exists(self):
         self.get_db_connection()
-        # Check if the procedure exists
         self.cursor.execute("SHOW PROCEDURE STATUS WHERE Name = 'CountFlightsByAirline'")
         if not self.cursor.fetchone():
-            # Create the procedure if it doesn't exist
             create_procedure_query = """
             CREATE PROCEDURE CountFlightsByAirline()
             BEGIN
@@ -159,7 +150,6 @@ class CRUDOperations:
     def create_flight_log_triggers(self):
         self.get_db_connection()
         
-        # Insert trigger
         insert_trigger = """
         CREATE TRIGGER IF NOT EXISTS after_flight_insert
         AFTER INSERT ON Flights
@@ -170,7 +160,6 @@ class CRUDOperations:
         END;
         """
         
-        # Update trigger
         update_trigger = """
         CREATE TRIGGER IF NOT EXISTS after_flight_update
         AFTER UPDATE ON Flights
@@ -181,7 +170,6 @@ class CRUDOperations:
         END;
         """
         
-        # Delete trigger
         delete_trigger = """
         CREATE TRIGGER IF NOT EXISTS after_flight_delete
         AFTER DELETE ON Flights
@@ -192,7 +180,6 @@ class CRUDOperations:
         END;
         """
         
-        # Execute all triggers
         self.cursor.execute(insert_trigger)
         self.cursor.execute(update_trigger)
         self.cursor.execute(delete_trigger)
@@ -203,11 +190,9 @@ class CRUDOperations:
     def create_update_route_duration_procedure(self):
         self.get_db_connection()
         try:
-            # Drop the procedure if it exists
             drop_procedure_query = "DROP PROCEDURE IF EXISTS UpdateRouteDuration"
             self.cursor.execute(drop_procedure_query)
             
-            # Create the procedure
             procedure_query = """
             CREATE PROCEDURE UpdateRouteDuration(IN route_id INT)
             BEGIN
@@ -308,7 +293,6 @@ class CRUDOperations:
         print(f"Airline {airline_code} deleted successfully!")
         self.close_db_connection()
 
-    ### CRUD Operations for Flights ###
     def check_airline_exists(self, airline_code):
         """Check if airline exists before adding/updating flights"""
         self.cursor.execute("SELECT airline_code FROM Airlines WHERE airline_code = %s", (airline_code,))
@@ -329,12 +313,10 @@ class CRUDOperations:
         try:
             self.get_db_connection()
             
-            # Validate airline exists
             if not self.check_airline_exists(airline_code):
                 raise ValueError(f"Airline with code {airline_code} does not exist. "
                                f"Please add the airline first.")
 
-            # Validate airports exist
             if not self.check_airports_exist(source_airport, destination_airport):
                 raise ValueError(f"One or both airports ({source_airport}, {destination_airport}) "
                                f"do not exist. Please add the airports first.")
@@ -371,12 +353,10 @@ class CRUDOperations:
         try:
             self.get_db_connection()
 
-            # Validate airline if being updated
             if new_airline_code and not self.check_airline_exists(new_airline_code):
                 raise ValueError(f"Airline with code {new_airline_code} does not exist. "
                                f"Please add the airline first.")
 
-            # Validate airports if being updated
             if new_source_airport or new_destination_airport:
                 current_flight = None
                 if new_source_airport or new_destination_airport:
@@ -440,7 +420,6 @@ class CRUDOperations:
         print(f"Flight {flight_id} deleted successfully!")
         self.close_db_connection()
 
-    ### CRUD Operations for Routes ###
     def read_routes(self):
         self.get_db_connection()
         self.cursor.execute("SELECT * FROM Routes")

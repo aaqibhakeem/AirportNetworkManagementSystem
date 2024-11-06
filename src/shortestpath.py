@@ -108,11 +108,9 @@ class ShortestPathAlgorithms:
     def compute_all_shortest_paths(G, source, destination):
         results = {}
 
-        # Dijkstra's algorithm
         dijkstra_path, dijkstra_distance = ShortestPathAlgorithms.compute_shortest_path_dijkstra(G, source, destination)
         results["Dijkstra"] = (dijkstra_path, dijkstra_distance)
         
-        # A* algorithm with different heuristics
         heuristics = ['euclidean', 'manhattan', 'chebyshev']
         astar_results = {}
         
@@ -124,7 +122,6 @@ class ShortestPathAlgorithms:
         for heuristic in heuristics:
             results[f"A* ({heuristic})"] = astar_results[heuristic]
         
-        # Bellman-Ford algorithm
         bellman_ford_path, bellman_ford_distance = ShortestPathAlgorithms.compute_shortest_path_bellman_ford(G, source, destination)
         results["Bellman-Ford"] = (bellman_ford_path, bellman_ford_distance)
 

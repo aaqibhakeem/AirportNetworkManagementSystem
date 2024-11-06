@@ -138,7 +138,7 @@ def draw_graph(G, paths=None):
             lonaxis=dict(range=[60, 100])
         )
     )
-    return fig  # Return the figure object instead of showing it
+    return fig
 
 def get_source_destination(airports):
     print("Available airports:")
@@ -157,7 +157,6 @@ def get_source_destination(airports):
 def ask_add_route_to_db(source, destination, path, distance, num_vias, G, conn):
     cursor = conn.cursor()
 
-    # Check if the route already exists
     check_query = """
         SELECT COUNT(*) FROM Routes 
         WHERE source_airport = %s 
@@ -206,7 +205,6 @@ if __name__ == "__main__":
 
     draw_graph(G, [shortest_path])
 
-    # Ask the user if they want to add the route to the Routes table
     conn = get_connection()
     ask_add_route_to_db(source, destination, shortest_path, shortest_distance, num_vias, G, conn)
 

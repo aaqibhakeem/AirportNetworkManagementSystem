@@ -20,7 +20,7 @@ class SideMenu(QWidget):
             (QIcon("icons/flights.png"), QIcon("icons/flights.png")),
             (QIcon("icons/routes.png"), QIcon("icons/routes.png")),
             (QIcon("icons/shortestpath.png"), QIcon("icons/shortestpath.png")),
-            (QIcon("icons/advanced.png"), QIcon("icons/advanced.png"))  # Added icon for Advanced
+            (QIcon("icons/advanced.png"), QIcon("icons/advanced.png"))
         ]
         
         menu_items = ["Airports", "Airlines", "Flights", "Routes", "Shortest Path", "Advanced"]

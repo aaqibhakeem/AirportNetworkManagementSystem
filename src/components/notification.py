@@ -6,7 +6,6 @@ class Notification(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        # Set window flags to remove window frame and stay on top
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         
         self.setStyleSheet("""
@@ -25,15 +24,12 @@ class Notification(QWidget):
             }
         """)
         
-        # Create main container widget to apply styles
         self.container = QWidget(self)
         self.container.setObjectName("notificationWidget")
         
-        # Create and style the label
         self.label = QLabel(self.container)
         self.label.setWordWrap(True)
         
-        # Setup layout
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addWidget(self.container)
@@ -41,10 +37,8 @@ class Notification(QWidget):
         self.container_layout = QHBoxLayout(self.container)
         self.container_layout.addWidget(self.label)
         
-        # Set fixed height but allow for width adjustment
         self.setFixedHeight(50)
         
-        # Setup animations and timer
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.hide_animation)
         self.geometry_animation = QPropertyAnimation(self, b"geometry")
@@ -53,20 +47,17 @@ class Notification(QWidget):
         self.animation_group.addAnimation(self.geometry_animation)
         self.animation_group.addAnimation(self.opacity_animation)
 
-        # Initially hide the notification
         self.hide()
 
     def show_message(self, message, duration=5000):
         self.label.setText(message)
         self.adjustSize()
         
-        # Calculate the position to appear at the bottom left of the parent window
         parent_rect = self.parent().rect()
-        width = min(400, parent_rect.width())  # Limit maximum width
-        x = 20  # 20 pixel offset from left edge
-        y = parent_rect.height() - self.height() - 20  # 20 pixel offset from bottom edge
+        width = min(400, parent_rect.width())
+        x = 20
+        y = parent_rect.height() - self.height() - 20
         
-        # Set the initial position off-screen
         self.setGeometry(x, parent_rect.height(), width, self.height())
         self.setWindowOpacity(0)
         
@@ -80,7 +71,6 @@ class Notification(QWidget):
         self.opacity_animation.setEndValue(1.0)
         self.opacity_animation.setEasingCurve(QEasingCurve.OutCubic)
 
-        # Show the widget before starting the animation
         self.show()
         self.animation_group.start()
         self.timer.start(duration)
