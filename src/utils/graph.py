@@ -2,7 +2,7 @@ import os, sys
 import networkx as nx
 import plotly.graph_objects as go
 import mysql.connector
-from src.shortestpath import ShortestPathAlgorithms
+from src.utils.shortestpath import ShortestPathAlgorithms
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from dbdetails import get_connection
 
