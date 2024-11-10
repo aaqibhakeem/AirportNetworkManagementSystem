@@ -382,15 +382,8 @@ class MainWindow(QMainWindow):
 
         self.notification.show_message("Route stored successfully")
 
-    def read_flight_logs(self):
-        self.crud_operations.get_db_connection()
-        self.crud_operations.cursor.execute("SELECT * FROM FlightLogs ORDER BY timestamp DESC")
-        logs = self.crud_operations.cursor.fetchall()
-        self.crud_operations.close_db_connection()
-        return logs
-
     def show_flight_logs(self):
-        logs = self.read_flight_logs()
+        logs = self.crud_operations.read_flight_logs()
         self.display_results(logs, ["Log ID", "Flight ID", "Action", "Timestamp"])
 
     def show_flights_with_airline_info(self):

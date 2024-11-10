@@ -147,7 +147,7 @@ class CRUDOperations:
     
         self.close_db_connection()
 
-    def create_flight_log_triggers(self):
+    def create_flight_log_triggers(self): #triggers
         self.get_db_connection()
         
         insert_trigger = """
@@ -187,6 +187,13 @@ class CRUDOperations:
         self.conn.commit()
         self.close_db_connection()
 
+    def read_flight_logs(self):
+        self.get_db_connection()
+        self.cursor.execute("SELECT * FROM FlightLogs ORDER BY timestamp DESC")
+        logs = self.cursor.fetchall()
+        self.close_db_connection()
+        return logs
+
     def create_update_route_duration_procedure(self):
         self.get_db_connection()
         try:
@@ -216,7 +223,7 @@ class CRUDOperations:
         finally:
             self.close_db_connection()
 
-    def get_flights_with_airline_info(self):
+    def get_flights_with_airline_info(self): #inner join
         self.get_db_connection()
         query = """
         SELECT f.flight_id, f.source_airport, f.destination_airport, 
@@ -229,13 +236,13 @@ class CRUDOperations:
         self.close_db_connection()
         return flights_with_airline_info
 
-    def get_airport_flight_counts(self):
+    def get_airport_flight_counts(self): #aggregate, left join
         self.get_db_connection()
         query = """
         SELECT a.airport_code, a.airport_name, 
                COUNT(f.flight_id) as flight_count
         FROM Airports a
-        LEFT JOIN Flights f ON a.airport_code = f.source_airport
+        LEFT JOIN Flights f ON a.airport_code = f.source_airport OR a.airport_code = f.destination_airport
         GROUP BY a.airport_code, a.airport_name
         """
         self.cursor.execute(query)
@@ -243,7 +250,7 @@ class CRUDOperations:
         self.close_db_connection()
         return airport_flight_counts
 
-    def get_busiest_airports(self, limit=10):
+    def get_busiest_airports(self, limit=10): #nested
         self.get_db_connection()
         query = """
         SELECT a.airport_code, a.airport_name,
